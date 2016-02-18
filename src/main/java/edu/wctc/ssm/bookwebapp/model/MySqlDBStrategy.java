@@ -159,9 +159,6 @@ public class MySqlDBStrategy implements DBStrategy {
         
         DBStrategy db = new MySqlDBStrategy();
         db.openConnection("com.mysql.jdbc.Driver", "jdbc:mysql://localhost:3306/books", "root", "admin");
-        //System.out.println(db.findAllRecords("author", 0).toString());
-//        db.deleteById();
-//        System.out.println(db.findAllRecords("author", 0).toString());
 
         List<String> colNames = Arrays.asList("author_name", "date_added");
         List<Object> colValues = Arrays.asList("Lucifer", "2000-11-11");

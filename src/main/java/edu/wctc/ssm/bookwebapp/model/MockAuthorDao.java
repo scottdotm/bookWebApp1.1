@@ -30,4 +30,7 @@ public class MockAuthorDao implements AuthorDaoStrategy {
         
         return Authors;
     }
+    public int deleteAuthorById(Object id){
+        return 1;
+    }
 }
