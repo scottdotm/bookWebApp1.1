@@ -1,8 +1,8 @@
 package edu.wctc.ssm.bookwebapp.model;
 
 
+import java.sql.Array;
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,7 +10,9 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -52,8 +54,6 @@ public class MySqlDBStrategy implements DBStrategy {
                 }else{
                 sql = "select * from " + tableName + " limit " + maxRecords;
                 }
-   
-      //String sql = "select * from " + tableName + " limit " + maxRecords;
       Statement stmt = conn.createStatement();
       ResultSet rs = stmt.executeQuery(sql);
       ResultSetMetaData rsmd = rs.getMetaData();
@@ -76,35 +76,82 @@ public class MySqlDBStrategy implements DBStrategy {
     /**
      * Deletes a record by its Id
      * @param tableName
-     * @param id
-     * @throws ClassNotFoundException, SQLException
+     * @param pkColName
+     * @param value
+     * @return psmt.executeUpdate();
+     * @throws java.sql.SQLException
      */
     @Override
-    public void deleteById(String tableName, String id) throws ClassNotFoundException, SQLException {
-        //Need to evaluate the parameters being passed in.
-        String pKeyColumnName = null;
-        
-        
-        DatabaseMetaData dmd = conn.getMetaData();
-        ResultSet rs = null;
-      
-        rs = dmd.getPrimaryKeys(null, null, tableName);
-       
-            
-        while(rs.next()){
-        pKeyColumnName = rs.getString("COLUMN_NAME");
-        
-        String sql2 = "delete from " + tableName + " where " + pKeyColumnName + "=?";
-        
-        PreparedStatement pstmt = conn.prepareStatement(sql2);
-       
-        pstmt.setInt(1, Integer.parseInt(id));
-        
-        pstmt.executeUpdate(); 
-        }
+    public int deleteById(String tableName, String pkColName, Object value) throws SQLException{
+        String sql = "delete from " + tableName + " where " + pkColName + " = ?";
+        PreparedStatement psmt = conn.prepareStatement(sql);
+        psmt.setObject(1, value);
+        return psmt.executeUpdate();
+}
+    @Override
+    public int updateRecordById(String tableName, List<String> colNames, List<Object> colValues, String pkColName, Object value) throws SQLException{
+        PreparedStatement pstmt = null;
+        int recsUpdated = 0;
 
-    }
-//}
+        // do this in an excpetion handler so that we can depend on the
+        // finally clause to close the connection
+  try{
+                    pstmt = buildUpdateStatement(conn,tableName,colNames,pkColName);
+
+                    final Iterator i=colValues.iterator();
+                    int index = 1;
+                    Object obj = null;
+
+                    // set params for column values
+                    while( i.hasNext()) {
+                        obj = i.next();
+                        pstmt.setObject(index++, obj);
+                    }
+                    // and finally set param for wehere value
+                    pstmt.setObject(index,value);
+                    
+                    recsUpdated = pstmt.executeUpdate();
+
+        } catch (SQLException sqle) {
+            throw sqle;
+        } catch (Exception e) {
+            throw e;
+        } finally {
+                    try {
+                            pstmt.close();
+                            conn.close();
+                    } catch(SQLException e) {
+                            throw e;
+                    } // end try
+        } // end finally
+
+        return recsUpdated;
+	}
+    
+    /*
+	 * Builds a java.sql.PreparedStatement for an sql update using only one where clause test
+	 * @param conn - a JDBC <code>Connection</code> object
+	 * @param tableName - a <code>String</code> representing the table name
+	 * @param colDescriptors - a <code>List</code> containing the column descriptors for
+	 * the fields that can be updated.
+	 * @param whereField - a <code>String</code> representing the field name for the
+	 * search criteria.
+	 * @return java.sql.PreparedStatement
+	 * @throws SQLException
+	 */
+	private PreparedStatement buildUpdateStatement(Connection conn_loc, String tableName, List colNames, String pkColName) throws SQLException {
+		StringBuffer sql = new StringBuffer("UPDATE ");
+		(sql.append(tableName)).append(" SET ");
+		final Iterator i=colNames.iterator();
+		while( i.hasNext() ) {
+			(sql.append( (String)i.next() )).append(" = ?, ");
+		}
+		sql = new StringBuffer( (sql.toString()).substring( 0,(sql.toString()).lastIndexOf(", ") ) );
+		((sql.append(" WHERE ")).append(pkColName)).append(" = ?");
+		final String finalSQL=sql.toString();
+		return conn_loc.prepareStatement(finalSQL);
+	}
+
     
     
     
@@ -112,21 +159,19 @@ public class MySqlDBStrategy implements DBStrategy {
         
         DBStrategy db = new MySqlDBStrategy();
         db.openConnection("com.mysql.jdbc.Driver", "jdbc:mysql://localhost:3306/books", "root", "admin");
-        System.out.println(db.findAllRecords("author", 0).toString());
-        db.deleteById("author", "3");
-        System.out.println(db.findAllRecords("author", 0).toString());
+        //System.out.println(db.findAllRecords("author", 0).toString());
+//        db.deleteById();
+//        System.out.println(db.findAllRecords("author", 0).toString());
+
+        List<String> colNames = Arrays.asList("author_name", "date_added");
+        List<Object> colValues = Arrays.asList("Lucifer", "2000-11-11");
+        int result = db.updateRecordById("author", colNames, colValues, "author_id", 1);
         db.closeConnection();
         
-    }}
-//    
-//}
-//    public static void main(String[] args) throws SQLException, ClassNotFoundException{
-//DBStrategy db = new MySqlDBStrategy();
-//db.openConnection("com.mysql.jdbc.Driver","jdbc:mysql://localhost:3306/books","root","admin");
-//List<Map<String,Object>> rawData=db.findAllRecords("author",0);
-//db.closeConnection();
-//System.out.println(rawData);
-//}
-//
-//}
-
+        db.openConnection("com.mysql.jdbc.Driver", "jdbc:mysql://localhost:3306/books", "root", "admin");
+        List rawData = db.findAllRecords("author", 0);
+        System.out.println(rawData);
+        db.closeConnection();
+        
+    }
+}

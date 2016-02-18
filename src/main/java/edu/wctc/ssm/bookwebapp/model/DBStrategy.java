@@ -23,5 +23,6 @@ public interface DBStrategy {
     
     public abstract List<Map<String, Object>> findAllRecords(String tableName, int maxRecords) throws SQLException;
     
-    public void deleteById(String tableName, String id) throws ClassNotFoundException, SQLException;
+    public abstract int deleteById(String tableName, String pkColName, Object value) throws SQLException;
+    public abstract int updateRecordById(String tableName, List<String> colNames, List<Object> colValues, String pkColName, Object value) throws SQLException;
 }
